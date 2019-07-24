@@ -1,0 +1,41 @@
+version: '3.3'
+services:
+  innsyn-api:
+    build: ./dagpenger-innsyn-api
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mockserver
+    links:
+      - mockserver
+  innsyn-ui:
+    build: ./dp-inntekt-innsyn-ui
+    ports:
+      - "3000:443"
+    environment:
+      - APP_INNSYN_API_BASEURL=http://innsyn-api:8080
+      - OIDC_HOST_URL=http://host.docker.internal:4352
+      - OIDC_REDIRECT_URI=http://localhost:443/dp-inntekt-innsyn-ui/oidc/callback
+      - OIDC_AGENTNAME=foo
+      - OIDC_PASSWORD=bar
+      - REDIS_HOST=redis
+    depends_on:
+      - innsyn-api
+    links:
+      - innsyn-api
+      - redis
+  oidc-provider:
+    image: qlik/simple-oidc-provider
+    ports:
+      - 4352:4352
+    environment:
+      - REDIRECTS=http://localhost:443/dp-inntekt-innsyn-ui/oidc/callback
+      - PORT=4352
+  redis:
+    image: redis
+  mockserver:
+    build: ./dp-inntekt-innsyn-ui/aktoer-mock
+    ports:
+      - 3050:3050
+    environment:
+      - PORT=3050
