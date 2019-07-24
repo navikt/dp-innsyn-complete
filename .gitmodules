@@ -1,0 +1,6 @@
+[submodule "dagpenger-innsyn-api"]
+	path = dagpenger-innsyn-api
+	url = https://github.com/navikt/dagpenger-innsyn-api
+[submodule "dp-inntekt-innsyn-ui"]
+	path = dp-inntekt-innsyn-ui
+	url = https://github.com/navikt/dp-inntekt-innsyn-ui
