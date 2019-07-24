@@ -34,7 +34,7 @@ services:
   redis:
     image: redis
   mockserver:
-    build: ./dp-inntekt-innsyn-ui/aktoer-mock
+    build: ./dagpenger-innsyn-api/aktoer-mock
     ports:
       - 3050:3050
     environment:
