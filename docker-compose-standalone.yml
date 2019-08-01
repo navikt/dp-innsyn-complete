@@ -1,0 +1,87 @@
+version: '3.3'
+services:
+  openldap:
+    build: ldap
+    container_name: ldap
+    ports:
+      - "10636:636"
+      - "10389:389"
+    environment:
+      - "LDAP_TLS_VERIFY_CLIENT=try"
+  zookeeper:
+      #image: confluentinc/cp-zookeeper
+      build: zookeeper
+      container_name: zookeeper
+      environment:
+        - "ZOOKEEPER_CLIENT_PORT=2181"
+        - "ZOOKEEPER_AUTH_PROVIDER_1=org.apache.zookeeper.server.auth.SASLAuthenticationProvider"
+      ports:
+        - "2181:2181"
+  kafka:
+    build: kafka
+    container_name: kafka
+    environment:
+      - "KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181"
+      - "KAFKA_LISTENERS=SASLPLAINTEXT://0.0.0.0:9092,SASLINTERNAL://kafka:9093"
+      - "KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=SASLPLAINTEXT:SASL_PLAINTEXT,SASLINTERNAL:SASL_PLAINTEXT"
+      - "KAFKA_ADVERTISED_LISTENERS=SASLPLAINTEXT://localhost:9092,SASLINTERNAL://kafka:9093"
+      - "KAFKA_PROTOCOL_NAME=SASLPLAINTEXT,SASLINTERNAL"
+      - "KAFKA_LISTENER_NAME_SASLPLAINTEXT_PLAIN_SASL_SERVER_CALLBACK_HANDLER_CLASS=no.nav.common.security.authentication.SimpleLDAPAuthentication"
+      - "KAFKA_LISTENER_NAME_SASLINTERNAL_PLAIN_SASL_SERVER_CALLBACK_HANDLER_CLASS=no.nav.common.security.authentication.SimpleLDAPAuthentication"
+      - "KAFKA_AUTHORIZER_CLASS_NAME=no.nav.common.security.authorization.SimpleLDAPAuthorizer"
+      - "KAFKA_SUPER_USERS=User:igroup"
+      - "KAFKA_INTER_BROKER_LISTENER_NAME=SASLINTERNAL"
+      - "KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL=PLAIN"
+      - "KAFKA_SASL_ENABLED_MECHANISMS=PLAIN"
+      - "KAFKA_DEFAULT_REPLICATION_FACTOR=1"
+      - "KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1"
+      #- "KAFKA_AUTO_CREATE_TOPICS_ENABLE=false"
+    ports:
+      - "9092:9092"
+    depends_on:
+      - "zookeeper"
+      - "openldap"
+  innsyn-api:
+    build: ./dagpenger-innsyn-api
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9093
+      SRVDP_INNTEKT_INNSYN_USERNAME: igroup
+      SRVDP_INNTEKT_INNSYN_PASSWORD: itest
+    depends_on:
+      - mockserver
+    links:
+      - mockserver
+  mockserver:
+    build: ./dagpenger-innsyn-api/aktoer-mock
+    ports:
+      - 3050:3050
+    environment:
+      - PORT=3050
+  innsyn-ui:
+    build: ./dp-inntekt-innsyn-ui
+    ports:
+      - "3000:443"
+    environment:
+      - APP_INNSYN_API_BASEURL=http://innsyn-api:8080
+      - OIDC_HOST_URL=http://host.docker.internal:4352
+      - OIDC_REDIRECT_URI=http://localhost:443/dp-inntekt-innsyn-ui/oidc/callback
+      - OIDC_AGENTNAME=foo
+      - OIDC_PASSWORD=bar
+      - REDIS_HOST=redis
+    depends_on:
+      - innsyn-api
+    links:
+      - innsyn-api
+      - redis
+  oidc-provider:
+    image: qlik/simple-oidc-provider
+    ports:
+      - 4352:4352
+    environment:
+      - REDIRECTS=http://localhost:443/dp-inntekt-innsyn-ui/oidc/callback
+      - PORT=4352
+  redis:
+    image: redis
+
+
+
